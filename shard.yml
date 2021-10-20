@@ -1,5 +1,5 @@
 name: authentic
-version: 0.9.0
+version: 0.9.1
 
 authors:
   - Paul Smith <paulcsmith0218@gmail.com>
@@ -16,7 +16,7 @@ dependencies:
     github: luckyframework/habitat
     version: ~> 0.4.7
   crystal-argon2:
-    github: sushichain/crystal-argon2
+    github: KasKatto/crystal-argon2
 
 development_dependencies:
   avram:
