@@ -1,4 +1,9 @@
 # Authentic
+________________________
+
+A Modified version of authentic to support Argon2 algorithm
+
+________________________
 
 [![API Documentation Website](https://img.shields.io/website?down_color=red&down_message=Offline&label=API%20Documentation&up_message=Online&url=https%3A%2F%2Fluckyframework.github.io%2Fauthentic%2F)](https://luckyframework.github.io/authentic)
 
