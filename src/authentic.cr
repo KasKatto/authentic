@@ -2,6 +2,7 @@ require "habitat"
 require "lucky"
 require "avram"
 require "crypto/bcrypt/password"
+require "crystal-argon2"
 require "./authentic/*"
 
 # Module for handling authentication
@@ -35,6 +36,9 @@ module Authentic
     setting encryption_cost : Int32 = Crypto::Bcrypt::DEFAULT_COST
     setting default_password_reset_time_limit : Time::Span = 15.minutes
     setting secret_key : String, validation: :validate_length
+    setting algorithm : String = "bcrypt"
+    setting argon2_t_cost : Int32 = 2
+    setting argon2_m_cost : Int32 = 16
   end
 
   def self.validate_length(value : String)
@@ -52,6 +56,7 @@ module Authentic
       ERROR
     end
   end
+
 
   # Remember the originally requested path if it is a GET
   #
@@ -94,7 +99,16 @@ module Authentic
     encrypted_password = authenticatable.encrypted_password
 
     if encrypted_password
-      Crypto::Bcrypt::Password.new(encrypted_password).verify(password_value)
+      if Authentic.settings.algorithm == "argon2id"
+        begin
+          response = Argon2::Password.verify_password(password_value, encrypted_password, Argon2::Engine::EngineType::ARGON2ID)
+          true
+        rescue
+          false
+        end
+      else
+        Crypto::Bcrypt::Password.new(encrypted_password).verify(password_value)
+      end
     else
       false
     end
@@ -130,10 +144,15 @@ module Authentic
     password_value : String,
     encryptor = Crypto::Bcrypt::Password
   ) : String
-    encryptor.create(
-      password_value,
-      cost: settings.encryption_cost
-    ).to_s
+    if Authentic.settings.algorithm == "argon2id"
+      encryptor = Argon2::Password.new(t_cost: Authentic.settings.argon2_t_cost, m_cost: Authentic.settings.argon2_m_cost)
+      encryptor.create(password_value, Argon2::Engine::EngineType::ARGON2ID)
+    else
+      encryptor.create(
+        password_value,
+        cost: settings.encryption_cost
+      ).to_s
+    end
   end
 
   # Generates a password reset token
@@ -158,5 +177,12 @@ module Authentic
     encryptor = Lucky::MessageEncryptor.new(secret: settings.secret_key)
     user_id, expiration_in_ms = String.new(encryptor.verify_and_decrypt(token)).split(":")
     Time.utc.to_unix_ms <= expiration_in_ms.to_i64 && user_id.to_s == authenticatable.id.to_s
+  end
+
+  private def self.secret_key
+    if settings.secret_key.length != 32
+      raise "Authentic secret_key must be 32 characters long"
+    end
+    settings.secret_key
   end
 end
